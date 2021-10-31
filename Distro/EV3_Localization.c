@@ -281,6 +281,8 @@ int scan_intersection(int *tl, int *tr, int *br, int *bl)
  *(br)=-1;
  *(bl)=-1;
  return(0);
+
+ // manually enter values here
  
 }
 
@@ -353,6 +355,28 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
    *   TO DO  -   Complete this function
    ***********************************************************************************************************************/
 
+ printf("find street\n");
+ printf("drive till we find intersection\n");
+ printf("scanning intersection\n");
+
+ // manually input colours here in order top-left, top-right, bottom-left, bottom-right
+ char top_left, top_right, bottom_left, bottom_right;
+ printf("enter top left building colour\n");
+ scanf("%c", top_left);
+
+ printf("enter top right building colour\n");
+ scanf("%c", top_right);
+
+ printf("enter bottom left building colour\n");
+ scanf("%c", bottom_left);
+
+ printf("enter bottom right building colour\n");
+ scanf("%c", bottom_right);
+
+ // update beliefs based on read colours (Blue = 2, Green = 3, White = 6)
+ 
+
+ 
  // Return an invalid location/direction and notify that localization was unsuccessful (you will delete this and replace it
  // with your code).
  *(robot_x)=-1;
