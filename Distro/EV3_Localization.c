@@ -360,8 +360,12 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
    *   TO DO  -   Complete this function
    ***********************************************************************************************************************/
 
- char top_left, top_right, bottom_left, bottom_right;
+ char top_left[10];
+ char top_right[10];
+ char bottom_left[10];
+ char bottom_right[10];
  int tl, tr, bl, br;
+ double first, second;
  double sum;
  double prob[sx*sy];
  double max_prob;
@@ -372,54 +376,64 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
  *(direction)=-1;
  
  printf("find street\n");
+ printf("drive to next intersection\n");
 
- while (robot_x < 0) {
-   printf("drive to next intersection\n");
+ while (*robot_x < 0) {
    printf("scanning intersection\n");
 
    // manually input colours here in order top-left, top-right, bottom-left, bottom-right
    printf("enter top left building colour\n");
-   scanf("%c", &top_left);
+   scanf("%s", top_left);
 
    printf("enter top right building colour\n");
-   scanf("%c", &top_right);
+   scanf("%s", top_right);
 
    printf("enter bottom right building colour\n");
-   scanf("%c", &bottom_right);
+   scanf("%s", bottom_right);
 
    printf("enter bottom left building colour\n");
-   scanf("%c", &bottom_left);
+   scanf("%s", bottom_left);
 
-   if (strcmp(top_left, 'B') == 0) {
+   printf("%s %s %s %s\n", top_left, top_right, bottom_right, bottom_left);
+
+   if (strcmp(top_left, "blue") == 0) {
      tl = 2;
-   } else if (strcmp(top_left, 'G') == 0) {
+   } else if (strcmp(top_left, "green") == 0) {
      tl = 3;
-   } else {
+   } else if (strcmp(top_left, "white") == 0) {
      tl = 6;
+   } else {
+     tl = 0;
    }
 
-   if (strcmp(top_right, 'B') == 0) {
+   if (strcmp(top_right, "blue") == 0) {
      tr = 2;
-   } else if (strcmp(top_right, 'G') == 0) {
+   } else if (strcmp(top_right, "green") == 0) {
      tr = 3;
-   } else {
+   } else if (strcmp(top_left, "white") == 0) {
      tr = 6;
-   }
-
-   if (strcmp(bottom_left, 'B') == 0) {
-     bl = 2;
-   } else if (strcmp(bottom_left, 'G') == 0) {
-     bl = 3;
    } else {
-     bl = 6;
+     tr = 0;
    }
 
-   if (strcmp(bottom_right, 'B') == 0) {
+   if (strcmp(bottom_right, "blue") == 0) {
      br = 2;
-   } else if (strcmp(bottom_right, 'G') == 0) {
+   } else if (strcmp(bottom_right, "green") == 0) {
      br = 3;
-   } else {
+   } else if (strcmp(top_left, "white") == 0) {
      br = 6;
+   } else {
+     br = 0;
+   }
+
+   if (strcmp(bottom_left, "blue") == 0) {
+     bl = 2;
+   } else if (strcmp(bottom_left, "green") == 0) {
+     bl = 3;
+   } else if (strcmp(top_left, "white") == 0) {
+     bl = 6;
+   } else {
+     bl = 0;
    }
 
    sum = 0;
@@ -520,14 +534,118 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
      break;
    }
 
-
-   /*printf("drive to next intersection\n");
+   printf("drive to next intersection\n");
    printf("scanning intersection\n");
 
-   sum = 0;*/
+   sum = 0;
 
    // update beliefs based on movement, assuming a perfect motion model
 
+   // rotation updates
+
+   // reached edge of map - turn around and return to same intersection
+   if (tl == 0 || tr == 0 || br == 0 || bl == 0) {
+     for (int j = 0; j < sy; j++) {
+       for (int i = 0; i < sx; i++) {
+         // turn 90 degrees to the right - up -> right, right -> down, down -> left, left -> up
+         // up -> right
+         first = beliefs[i+(j*sx)][0];
+         second = beliefs[i+(j*sx)][1];
+         beliefs[i+(j*sx)][1] = first;
+
+         // right -> down
+         first = second;
+         second = beliefs[i+(j*sx)][2];
+         beliefs[i+(j*sx)][2] = first;
+
+         // down -> left
+         first = second;
+         second = beliefs[i+(j*sx)][3];
+         beliefs[i+(j*sx)][3] = first;
+
+         // left -> up
+         first = second;
+         second = beliefs[i+(j*sx)][0];
+         beliefs[i+(j*sx)][0] = first;
+
+         // turn 90 degrees to the right again
+         // up -> right
+         first = beliefs[i+(j*sx)][0];
+         second = beliefs[i+(j*sx)][1];
+         beliefs[i+(j*sx)][1] = first;
+
+         // right -> down
+         first = second;
+         second = beliefs[i+(j*sx)][2];
+         beliefs[i+(j*sx)][2] = first;
+
+         // down -> left
+         first = second;
+         second = beliefs[i+(j*sx)][3];
+         beliefs[i+(j*sx)][3] = first;
+
+         // left -> up
+         first = second;
+         second = beliefs[i+(j*sx)][0];
+         beliefs[i+(j*sx)][0] = first;
+       }
+     }
+   }
+
+   // turn right 90 degrees
+   for (int j = 0; j < sy; j++) {
+     for (int i = 0; i < sx; i++) {
+       // turn 90 degrees to the right - up -> right, right -> down, down -> left, left -> up
+       // up -> right
+       first = beliefs[i+(j*sx)][0];
+       second = beliefs[i+(j*sx)][1];
+       beliefs[i+(j*sx)][1] = first;
+
+       // right -> down
+       first = second;
+       second = beliefs[i+(j*sx)][2];
+       beliefs[i+(j*sx)][2] = first;
+
+       // down -> left
+       first = second;
+       second = beliefs[i+(j*sx)][3];
+       beliefs[i+(j*sx)][3] = first;
+
+       // left -> up
+       first = second;
+       second = beliefs[i+(j*sx)][0];
+       beliefs[i+(j*sx)][0] = first;      
+     }
+   }
+
+   // turn left 90 degrees
+   for (int j = 0; j < sy; j++) {
+     for (int i = 0; i < sx; i++) {
+       // turn 90 degrees to the left - up -> left, left -> down, down -> right, right -> up
+       // up -> left
+       first = beliefs[i+(j*sx)][0];
+       second = beliefs[i+(j*sx)][3];
+       beliefs[i+(j*sx)][3] = first;
+
+       // left -> down
+       first = second;
+       second = beliefs[i+(j*sx)][2];
+       beliefs[i+(j*sx)][2] = first;
+
+       // down -> right
+       first = second;
+       second = beliefs[i+(j*sx)][1];
+       beliefs[i+(j*sx)][1] = first;
+
+       // right -> up
+       first = second;
+       second = beliefs[i+(j*sx)][0];
+       beliefs[i+(j*sx)][0] = first;      
+     }
+   }
+
+   // movement updates
+   // move forward to next intersection
 
  }
 
