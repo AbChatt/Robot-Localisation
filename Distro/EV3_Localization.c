@@ -529,11 +529,11 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
          is_unique = false;
        }
 
-       printf("%lf\n", prob[i+(j*sx)]);
+       //printf("%lf\n", prob[i+(j*sx)]);
      }
    }
 
-   printf("%d\n", is_unique);
+   //printf("%d\n", is_unique);
 
    if (is_unique) {
      printf("localisation complete!\n");
