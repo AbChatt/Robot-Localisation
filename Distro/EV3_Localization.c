@@ -371,6 +371,7 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
  bool is_unique;
  double first, second;
  double down_1, down_2, right_1, right_2;
+ int count = 0;
 
  *(robot_x)=-1;
  *(robot_y)=-1;
@@ -527,25 +528,21 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
          *direction = -1;
          is_unique = false;
        }
+
+       printf("%lf\n", prob[i+(j*sx)]);
      }
    }
 
+   printf("%d\n", is_unique);
+
    if (is_unique) {
      printf("localisation complete!\n");
-     break;
+     return 1;
    }
 
-   printf("drive to next intersection\n");
-   printf("scanning intersection\n");
-
-   sum = 0;
-
-   // update beliefs based on movement, assuming a perfect motion model
-
-   // rotation updates
-
-   // reached edge of map - turn around and return to same intersection
-   if (tl == 0 || tr == 0 || br == 0 || bl == 0) {
+   if (count < 2) {
+     printf("turn right\n");
+     // turn right 90 degrees
      for (int j = 0; j < sy; j++) {
        for (int i = 0; i < sx; i++) {
          // turn 90 degrees to the right - up -> right, right -> down, down -> left, left -> up
@@ -568,80 +565,109 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
          first = second;
          second = beliefs[i+(j*sx)][0];
          beliefs[i+(j*sx)][0] = first;
-
-         // turn 90 degrees to the right again
-         // up -> right
+       }
+     }
+     count += 1;
+   } else {
+     printf("turn left\n");
+     // turn left 90 degrees
+     for (int j = 0; j < sy; j++) {
+       for (int i = 0; i < sx; i++) {
+         // turn 90 degrees to the left - up -> left, left -> down, down -> right, right -> up
+         // up -> left
          first = beliefs[i+(j*sx)][0];
-         second = beliefs[i+(j*sx)][1];
-         beliefs[i+(j*sx)][1] = first;
+         second = beliefs[i+(j*sx)][3];
+         beliefs[i+(j*sx)][3] = first;
 
-         // right -> down
+         // left -> down
          first = second;
          second = beliefs[i+(j*sx)][2];
          beliefs[i+(j*sx)][2] = first;
 
-         // down -> left
+         // down -> right
          first = second;
-         second = beliefs[i+(j*sx)][3];
-         beliefs[i+(j*sx)][3] = first;
+         second = beliefs[i+(j*sx)][1];
+         beliefs[i+(j*sx)][1] = first;
 
-         // left -> up
+         // right -> up
          first = second;
          second = beliefs[i+(j*sx)][0];
-         beliefs[i+(j*sx)][0] = first;
+         beliefs[i+(j*sx)][0] = first;      
        }
      }
+     count += 1;
    }
 
-   // turn right 90 degrees
-   for (int j = 0; j < sy; j++) {
-     for (int i = 0; i < sx; i++) {
-       // turn 90 degrees to the right - up -> right, right -> down, down -> left, left -> up
-       // up -> right
-       first = beliefs[i+(j*sx)][0];
-       second = beliefs[i+(j*sx)][1];
-       beliefs[i+(j*sx)][1] = first;
+   if (count > 3) {
+     count = 0;
+   }
 
-       // right -> down
-       first = second;
-       second = beliefs[i+(j*sx)][2];
-       beliefs[i+(j*sx)][2] = first;
+   tl = 0;
 
-       // down -> left
-       first = second;
-       second = beliefs[i+(j*sx)][3];
-       beliefs[i+(j*sx)][3] = first;
+   while (tl == 0) {
+     printf("move forward to next intersection\n");
+     printf("check if we hit boundary\n");
+     printf("enter colour read by sensor - yellow for intersection\n");
+     scanf("%s", top_left);
 
-       // left -> up
-       first = second;
-       second = beliefs[i+(j*sx)][0];
-       beliefs[i+(j*sx)][0] = first;      
+     if (strcmp(top_left, "yellow") == 0) {
+       printf("found intersection!\n");
+       tl = 4;
+       break;
+     } else {
+       printf("at boundary of map\n");
+       printf("turn 180 degrees to the right\n");
+       printf("return to previous intersection\n");
+       tl = 0; 
      }
-   }
+     
+     // reached edge of map - turn around and return to same intersection
+     if (tl == 0) {
+       for (int j = 0; j < sy; j++) {
+         for (int i = 0; i < sx; i++) {
+           // turn 90 degrees to the right - up -> right, right -> down, down -> left, left -> up
+           // up -> right
+           first = beliefs[i+(j*sx)][0];
+           second = beliefs[i+(j*sx)][1];
+           beliefs[i+(j*sx)][1] = first;
 
-   // turn left 90 degrees
-   for (int j = 0; j < sy; j++) {
-     for (int i = 0; i < sx; i++) {
-       // turn 90 degrees to the left - up -> left, left -> down, down -> right, right -> up
-       // up -> left
-       first = beliefs[i+(j*sx)][0];
-       second = beliefs[i+(j*sx)][3];
-       beliefs[i+(j*sx)][3] = first;
+           // right -> down
+           first = second;
+           second = beliefs[i+(j*sx)][2];
+           beliefs[i+(j*sx)][2] = first;
 
-       // left -> down
-       first = second;
-       second = beliefs[i+(j*sx)][2];
-       beliefs[i+(j*sx)][2] = first;
+           // down -> left
+           first = second;
+           second = beliefs[i+(j*sx)][3];
+           beliefs[i+(j*sx)][3] = first;
 
-       // down -> right
-       first = second;
-       second = beliefs[i+(j*sx)][1];
-       beliefs[i+(j*sx)][1] = first;
+           // left -> up
+           first = second;
+           second = beliefs[i+(j*sx)][0];
+           beliefs[i+(j*sx)][0] = first;
 
-       // right -> up
-       first = second;
-       second = beliefs[i+(j*sx)][0];
-       beliefs[i+(j*sx)][0] = first;      
+           // turn 90 degrees to the right again
+           // up -> right
+           first = beliefs[i+(j*sx)][0];
+           second = beliefs[i+(j*sx)][1];
+           beliefs[i+(j*sx)][1] = first;
+
+           // right -> down
+           first = second;
+           second = beliefs[i+(j*sx)][2];
+           beliefs[i+(j*sx)][2] = first;
+
+           // down -> left
+           first = second;
+           second = beliefs[i+(j*sx)][3];
+           beliefs[i+(j*sx)][3] = first;
+
+           // left -> up
+           first = second;
+           second = beliefs[i+(j*sx)][0];
+           beliefs[i+(j*sx)][0] = first;
+         }
+       }
      }
    }
 
@@ -649,13 +675,15 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
    down_2 = 0;
    right_1 = 0;
    right_2 = 0;
-   // movement updates
+   sum = 0;
+
    // move forward to next intersection
    for (int j = 0; j < sy; j++) {
      for (int i = 0; i < sx; i++) {
        // up direction
        if (j - 1 >= 0) {
          beliefs[i+((j-1)*sx)][0] = beliefs[i+(j*sx)][0];
+         sum += beliefs[i+((j-1)*sx)][0];
        }
 
        // down direction (save val)
@@ -663,16 +691,19 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
          if (down_1 == 0) {
            down_1 = beliefs[i+((j+1)*sx)][2];
            beliefs[i+((j+1)*sx)][2] = beliefs[i+(j*sx)][2];
+           sum += beliefs[i+((j+1)*sx)][2];
          } else {
            down_2 = down_1;
            down_1 = beliefs[i+((j+1)*sx)][2];
            beliefs[i+((j+1)*sx)][2] = down_2;
+           sum += down_2;
          }
        }
 
        // left direction
        if (i - 1 >= 0) {
          beliefs[(i-1)+(j*sx)][3] = beliefs[i+(j*sx)][3];
+         sum += beliefs[(i-1)+(j*sx)][3];
        }
 
        // right direction (save val)
@@ -680,12 +711,58 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
          if (right_1 == 0) {
            right_1 = beliefs[(i+1)+(j*sx)][1];
            beliefs[(i+1)+(j*sx)][1] = beliefs[i+(j*sx)][1];
+           sum += beliefs[(i+1)+(j*sx)][1];
          } else {
            right_2 = right_1;
            right_1 = beliefs[(i+1)+(j*sx)][1];
            beliefs[(i+1)+(j*sx)][1] = right_2;
+           sum += right_2;
          }
        }
+
+       // no value shifted over for right direction
+       if (i == 0) {
+         beliefs[i+(j*sx)][1] = 0;
+       }
+
+       // no value shifted over for down direction
+       if (j == 0) {
+         beliefs[i+(j*sx)][2] = 0;
+       }
+
+       // no value shifted over for up direction
+       if (j == sy - 1) {
+         beliefs[i+(j*sx)][0] = 0;
+       }
+
+       // no value shifted over for left direction
+       if (i == sx - 1) {
+         beliefs[i+(j*sx)][3] = 0;
+       }
+     }
+   }
+
+   // normalise
+   for (int j = 0; j < sy; j++) {
+     for (int i = 0; i < sx; i++) {
+       for (int h = 0; h < 4; h++) {
+         beliefs[i+(j*sx)][h] = beliefs[i+(j*sx)][h] / sum;  
+       }
+
+       prob[i+(j*sx)] = beliefs[i+(j*sx)][0];
+
+       if (beliefs[i+(j*sx)][1] > prob[i+(j*sx)]) {
+         prob[i+(j*sx)] = beliefs[i+(j*sx)][1];
+       }
+       
+       if (beliefs[i+(j*sx)][2] > prob[i+(j*sx)]) {
+         prob[i+(j*sx)] = beliefs[i+(j*sx)][2];
+       }
+
+       if (beliefs[i+(j*sx)][3] > prob[i+(j*sx)]) {
+         prob[i+(j*sx)] = beliefs[i+(j*sx)][3];
+       }
+     }
    }
 
  }
@@ -694,9 +771,9 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
  
  // Return an invalid location/direction and notify that localization was unsuccessful (you will delete this and replace it
  // with your code).
- *(robot_x)=-1;
+ /**(robot_x)=-1;
  *(robot_y)=-1;
- *(direction)=-1;
+ *(direction)=-1;*/
  return(0);
 }
 
