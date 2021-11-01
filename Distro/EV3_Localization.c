@@ -365,11 +365,12 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
  char bottom_left[10];
  char bottom_right[10];
  int tl, tr, bl, br;
- double first, second;
  double sum;
  double prob[sx*sy];
  double max_prob;
  bool is_unique;
+ double first, second;
+ double down_1, down_2, right_1, right_2;
 
  *(robot_x)=-1;
  *(robot_y)=-1;
@@ -644,8 +645,48 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
      }
    }
 
+   down_1 = 0;
+   down_2 = 0;
+   right_1 = 0;
+   right_2 = 0;
    // movement updates
    // move forward to next intersection
+   for (int j = 0; j < sy; j++) {
+     for (int i = 0; i < sx; i++) {
+       // up direction
+       if (j - 1 >= 0) {
+         beliefs[i+((j-1)*sx)][0] = beliefs[i+(j*sx)][0];
+       }
+
+       // down direction (save val)
+       if (j + 1 < sy) {
+         if (down_1 == 0) {
+           down_1 = beliefs[i+((j+1)*sx)][2];
+           beliefs[i+((j+1)*sx)][2] = beliefs[i+(j*sx)][2];
+         } else {
+           down_2 = down_1;
+           down_1 = beliefs[i+((j+1)*sx)][2];
+           beliefs[i+((j+1)*sx)][2] = down_2;
+         }
+       }
+
+       // left direction
+       if (i - 1 >= 0) {
+         beliefs[(i-1)+(j*sx)][3] = beliefs[i+(j*sx)][3];
+       }
+
+       // right direction (save val)
+       if (i + 1 < sx) {
+         if (right_1 == 0) {
+           right_1 = beliefs[(i+1)+(j*sx)][1];
+           beliefs[(i+1)+(j*sx)][1] = beliefs[i+(j*sx)][1];
+         } else {
+           right_2 = right_1;
+           right_1 = beliefs[(i+1)+(j*sx)][1];
+           beliefs[(i+1)+(j*sx)][1] = right_2;
+         }
+       }
+   }
 
  }
 
