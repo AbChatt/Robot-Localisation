@@ -161,13 +161,13 @@ int main(int argc, char *argv[])
   }
 
  // Open a socket to the EV3 for remote controlling the bot.
- if (BT_open(HEXKEY)!=0)
+ /*if (BT_open(HEXKEY)!=0)
  {
   fprintf(stderr,"Unable to open comm socket to the EV3, make sure the EV3 kit is powered on, and that the\n");
   fprintf(stderr," hex key for the EV3 matches the one in EV3_Localization.h\n");
   free(map_image);
   exit(1);
- }
+ }*/
 
  fprintf(stderr,"All set, ready to go!\n");
  
@@ -209,10 +209,15 @@ int main(int argc, char *argv[])
 
  // HERE - write code to call robot_localization() and go_to_target() as needed, any additional logic required to get the
  //        robot to complete its task should be here.
-
+ int *robot_x;
+ int *robot_y;
+ int *direction;
+ 
+ robot_localization(robot_x, robot_y, direction);
+ printf("Robot location: %d %d facing direction: %d\n", *robot_x, *robot_y, *direction);
 
  // Cleanup and exit - DO NOT WRITE ANY CODE BELOW THIS LINE
- BT_close();
+ //BT_close();
  free(map_image);
  exit(0);
 }
@@ -355,26 +360,177 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
    *   TO DO  -   Complete this function
    ***********************************************************************************************************************/
 
- printf("find street\n");
- printf("drive till we find intersection\n");
- printf("scanning intersection\n");
-
- // manually input colours here in order top-left, top-right, bottom-left, bottom-right
  char top_left, top_right, bottom_left, bottom_right;
- printf("enter top left building colour\n");
- scanf("%c", top_left);
+ int tl, tr, bl, br;
+ double sum;
+ double prob[sx*sy];
+ double max_prob;
+ bool is_unique;
 
- printf("enter top right building colour\n");
- scanf("%c", top_right);
-
- printf("enter bottom left building colour\n");
- scanf("%c", bottom_left);
-
- printf("enter bottom right building colour\n");
- scanf("%c", bottom_right);
-
- // update beliefs based on read colours (Blue = 2, Green = 3, White = 6)
+ *(robot_x)=-1;
+ *(robot_y)=-1;
+ *(direction)=-1;
  
+ printf("find street\n");
+
+ while (robot_x < 0) {
+   printf("drive to next intersection\n");
+   printf("scanning intersection\n");
+
+   // manually input colours here in order top-left, top-right, bottom-left, bottom-right
+   printf("enter top left building colour\n");
+   scanf("%c", &top_left);
+
+   printf("enter top right building colour\n");
+   scanf("%c", &top_right);
+
+   printf("enter bottom right building colour\n");
+   scanf("%c", &bottom_right);
+
+   printf("enter bottom left building colour\n");
+   scanf("%c", &bottom_left);
+
+   if (strcmp(top_left, 'B') == 0) {
+     tl = 2;
+   } else if (strcmp(top_left, 'G') == 0) {
+     tl = 3;
+   } else {
+     tl = 6;
+   }
+
+   if (strcmp(top_right, 'B') == 0) {
+     tr = 2;
+   } else if (strcmp(top_right, 'G') == 0) {
+     tr = 3;
+   } else {
+     tr = 6;
+   }
+
+   if (strcmp(bottom_left, 'B') == 0) {
+     bl = 2;
+   } else if (strcmp(bottom_left, 'G') == 0) {
+     bl = 3;
+   } else {
+     bl = 6;
+   }
+
+   if (strcmp(bottom_right, 'B') == 0) {
+     br = 2;
+   } else if (strcmp(bottom_right, 'G') == 0) {
+     br = 3;
+   } else {
+     br = 6;
+   }
+
+   sum = 0;
+
+   // update beliefs based on read colours (Blue = 2, Green = 3, White = 6), assuming a sensor model that is correct 90% of the time
+   for (int j = 0; j < sy; j++) {
+     for (int i = 0; i < sx; i++) {
+       // reading in up direction
+       if (map[i+(j*sx)][0] == tl && map[i+(j*sx)][1] == tr && map[i+(j*sx)][2] == br && map[i+(j*sx)][3] == bl) {
+         beliefs[i+(j*sx)][0] *= 0.9;
+         sum += beliefs[i+(j*sx)][0];
+       } else {
+         beliefs[i+(j*sx)][0] *= 0.1;
+         sum += beliefs[i+(j*sx)][0];
+       }
+
+       // reading in down direction
+       if (map[i+(j*sx)][2] == tl && map[i+(j*sx)][3] == tr && map[i+(j*sx)][0] == br && map[i+(j*sx)][1] == bl) {
+         beliefs[i+(j*sx)][2] *= 0.9;
+         sum += beliefs[i+(j*sx)][2];
+       } else {
+         beliefs[i+(j*sx)][2] *= 0.1;
+         sum += beliefs[i+(j*sx)][2];
+       }
+
+       // reading in left direction
+       if (map[i+(j*sx)][3] == tl && map[i+(j*sx)][0] == tr && map[i+(j*sx)][1] == br && map[i+(j*sx)][2] == bl) {
+         beliefs[i+(j*sx)][3] *= 0.9;
+         sum += beliefs[i+(j*sx)][3];
+       } else {
+         beliefs[i+(j*sx)][3] *= 0.1;
+         sum += beliefs[i+(j*sx)][3];
+       }
+
+       // reading in right direction
+       if (map[i+(j*sx)][1] == tl && map[i+(j*sx)][2] == tr && map[i+(j*sx)][3] == br && map[i+(j*sx)][0] == bl) {
+         beliefs[i+(j*sx)][1] *= 0.9;
+         sum += beliefs[i+(j*sx)][1];
+       } else {
+         beliefs[i+(j*sx)][1] *= 0.1;
+         sum += beliefs[i+(j*sx)][1];
+       }       
+     }
+   }
+
+   // normalise
+   for (int j = 0; j < sy; j++) {
+     for (int i = 0; i < sx; i++) {
+       for (int h = 0; h < 4; h++) {
+         beliefs[i+(j*sx)][h] = beliefs[i+(j*sx)][h] / sum;  
+       }
+
+       prob[i+(j*sx)] = beliefs[i+(j*sx)][0];
+
+       if (beliefs[i+(j*sx)][1] > prob[i+(j*sx)]) {
+         prob[i+(j*sx)] = beliefs[i+(j*sx)][1];
+       }
+       
+       if (beliefs[i+(j*sx)][2] > prob[i+(j*sx)]) {
+         prob[i+(j*sx)] = beliefs[i+(j*sx)][2];
+       }
+
+       if (beliefs[i+(j*sx)][3] > prob[i+(j*sx)]) {
+         prob[i+(j*sx)] = beliefs[i+(j*sx)][3];
+       }
+     }
+   }
+
+   max_prob = 0;
+   // check if we have a clear winner
+   for (int j = 0; j < sy; j++) {
+     for (int i = 0; i < sx; i++) {
+       if (prob[i+(j*sx)] > max_prob) {
+         max_prob = prob[i+(j*sx)];
+         *robot_x = i;
+         *robot_y = j;
+         is_unique = true;
+         if (beliefs[i+(j*sx)][0] == max_prob) {
+           *direction = 0;
+         } else if (beliefs[i+(j*sx)][1] == max_prob) {
+           *direction = 1;
+         } else if (beliefs[i+(j*sx)][2] == max_prob) {
+           *direction = 2;
+         } else if (beliefs[i+(j*sx)][3] == max_prob) {
+           *direction = 3;
+         }
+       } else if (prob[i+(j*sx)] == max_prob) {
+         *robot_x = -1;
+         *robot_y = -1;
+         *direction = -1;
+         is_unique = false;
+       }
+     }
+   }
+
+   if (is_unique) {
+     printf("localisation complete!\n");
+     break;
+   }
+
+
+   /*printf("drive to next intersection\n");
+   printf("scanning intersection\n");
+
+   sum = 0;*/
+
+   // update beliefs based on movement, assuming a perfect motion model
+
+
+ }
+
 
  
  // Return an invalid location/direction and notify that localization was unsuccessful (you will delete this and replace it
